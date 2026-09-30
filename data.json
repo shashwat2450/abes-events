@@ -1,0 +1,33 @@
+{
+  "nextId": 4,
+  "events": [
+    {
+      "id": 1,
+      "name": "Kalakrit",
+      "category": "Cultural",
+      "date": "2026-10-17T17:00",
+      "venue": "Auditorium",
+      "featured": true,
+      "description": "A stage for art, music, dance and performance by the most creative people on campus."
+    },
+    {
+      "id": 2,
+      "name": "Genero",
+      "category": "Sports",
+      "date": "2026-11-07T10:00",
+      "venue": "College Ground",
+      "featured": false,
+      "description": "A day of games and friendly competition out on the ground."
+    },
+    {
+      "id": 3,
+      "name": "ABES Got Latent",
+      "category": "Entertainment",
+      "date": "2026-11-21T18:00",
+      "venue": "Auditorium",
+      "featured": false,
+      "description": "A talent and comedy show where ABES students take the mic."
+    }
+  ],
+  "registrations": []
+}

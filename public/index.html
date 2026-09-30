@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABES EVENTS</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#10233f;--board:#ffc61a;--rail:#e8edf3;--white:#fff;--muted:#54627a;--red:#c8312b;--green:#177a4b;--line:#c9d3e0}
+*{box-sizing:border-box;margin:0}
+body{font-family:Barlow,system-ui,sans-serif;background:var(--rail);color:var(--navy);line-height:1.55}
+h1,h2,h3{font-family:'Barlow Condensed','Arial Narrow',sans-serif;line-height:1.1}
+:focus-visible{outline:3px solid var(--board);outline-offset:2px}
+header{position:sticky;top:0;z-index:5;background:var(--navy);color:#fff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem 1rem;padding:.7rem 5vw}
+.logo{font:700 1.5rem 'Barlow Condensed',sans-serif;letter-spacing:.05em;color:var(--board);text-decoration:none}
+nav a{color:#fff;text-decoration:none;margin-left:1.1rem;padding:.2rem 0;border-bottom:3px solid transparent}
+nav a.on{border-color:var(--board)}
+.hero{background:var(--navy);color:#fff;padding:3.5rem 5vw 3rem;text-align:center;border-bottom:8px solid var(--board)}
+.board{display:inline-block;background:var(--board);color:var(--navy);font:700 clamp(2.6rem,11vw,6rem)/1 'Barlow Condensed',sans-serif;letter-spacing:.04em;padding:.1em .35em;border-radius:6px}
+.hero p{max-width:680px;margin:1.6rem auto;font-size:1.1rem;opacity:.9}
+main{max-width:1100px;margin:auto;padding:1rem 5vw 4rem}
+h2{font-size:2rem;margin:2rem 0 1rem}
+.btn{display:inline-block;border:2px solid var(--navy);border-radius:6px;padding:.55rem 1.2rem;background:var(--navy);color:#fff;font:600 1rem Barlow,sans-serif;cursor:pointer;text-decoration:none}
+.hero .btn{background:var(--board);color:var(--navy);border-color:var(--board)}
+.btn.alt{background:transparent;color:var(--navy)}
+.btn.del{background:var(--red);border-color:var(--red)}
+.btn.sm{padding:.25rem .7rem;font-size:.9rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:1.2rem}
+.ticket{background:var(--white);border-radius:10px;border-left:8px solid var(--board);display:flex;flex-direction:column}
+.ticket .top{padding:1.1rem 1.2rem;display:grid;gap:.35rem}
+.ticket .stub{margin-top:auto;border-top:2px dashed var(--line);padding:.8rem 1.2rem;display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.ticket h3{font-size:1.7rem}
+.tag{justify-self:start;background:var(--navy);color:#fff;font-size:.8rem;padding:.05rem .6rem;border-radius:4px}
+.feat .ticket{max-width:620px;border-left-color:var(--red)}
+.bar{display:flex;flex-wrap:wrap;gap:.7rem;margin-bottom:1.2rem}
+.bar input{flex:2 1 220px}.bar select{flex:1 1 160px}
+input,select,textarea{font:inherit;color:inherit;width:100%;padding:.55rem .75rem;border:1.5px solid var(--line);border-radius:6px;background:#fff}
+label{display:block;font-weight:600;font-size:.9rem;margin:.8rem 0 .2rem}
+dialog{border:0;border-radius:10px;padding:1.5rem;width:min(460px,92vw);max-height:92vh}
+dialog::backdrop{background:#10233fb0}
+.msg{margin-top:.6rem;color:var(--red);font-size:.95rem}.msg.ok{color:var(--green)}
+.row{display:flex;gap:.6rem;margin-top:1rem;flex-wrap:wrap}
+.tabs{display:flex;gap:.5rem;margin:1.5rem 0 1rem;flex-wrap:wrap}
+.scroll{overflow-x:auto;background:#fff;border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:.92rem;min-width:600px}
+th,td{text-align:left;padding:.6rem .8rem;border-bottom:1px solid var(--line)}
+th{background:var(--navy);color:#fff;font-weight:600}
+.empty{color:var(--muted);padding:1rem 0}
+</style>
+</head>
+<body>
+<header><a class="logo" href="#/">ABES EVENTS</a><nav><a href="#/">Home</a><a href="#/events">Events</a><a href="#/admin">Admin</a></nav></header>
+<div id="app"></div>
+<dialog id="dlg"></dialog>
+<script>
+const INTRO = "A space to learn new skills, challenge yourself, collaborate with others, turn ideas into opportunities, and grow beyond the classroom. Whether you're here to learn something new, share what you already know, meet like-minded people, or simply explore, there's a station waiting for you. 🚉 Coders, designers, writers, speakers, planners, or just the curious — folks from all backgrounds are welcome aboard.";
+const $ = s => document.querySelector(s), app = $('#app'), dlg = $('#dlg');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = d => new Date(d).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+let token = sessionStorage.getItem('tok');
+
+async function api(url, opt = {}) {
+  const r = await fetch(url, { ...opt, headers: { 'Content-Type': 'application/json', ...(token && { Authorization: 'Bearer ' + token }) }, body: opt.body && JSON.stringify(opt.body) });
+  const d = await r.json().catch(() => ({}));
+  if (r.status === 401 && token) { token = null; sessionStorage.removeItem('tok'); route(); }
+  if (!r.ok) throw new Error(d.error || 'Something went wrong. Try again.');
+  return d;
+}
+
+const ticket = e => `<article class="ticket"><div class="top"><span class="tag">${esc(e.category)}</span><h3>${esc(e.name)}</h3><div>📅 ${fmt(e.date)}</div><div>📍 ${esc(e.venue)}</div><p>${esc(e.description)}</p></div><div class="stub"><span>Free entry</span><button class="btn" data-reg="${e.id}">Register</button></div></article>`;
+
+async function route() {
+  const h = location.hash || '#/';
+  document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === h));
+  try { await (h.startsWith('#/admin') ? admin() : h === '#/events' ? events() : home()); }
+  catch (e) { app.innerHTML = `<main><p class="msg">${esc(e.message)}</p></main>`; }
+}
+addEventListener('hashchange', route);
+
+async function home() {
+  const all = await api('/api/events'), now = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
+  const up = all.filter(e => e.date >= now), feat = up.find(e => e.featured) || up[0];
+  app.innerHTML = `<section class="hero"><h1 class="board">ABES EVENTS</h1><p>${esc(INTRO)}</p><a class="btn" href="#/events">See all events</a></section>
+  <main>${feat ? `<h2>Featured event</h2><div class="feat">${ticket(feat)}</div>` : ''}
+  <h2>Upcoming events</h2>${up.length ? `<div class="grid">${up.slice(0, 3).map(ticket).join('')}</div>` : '<p class="empty">No upcoming events yet. Check back soon.</p>'}</main>`;
+}
+
+async function events() {
+  app.innerHTML = `<main><h2>All events</h2><div class="bar"><input id="q" type="search" placeholder="Search events by name" aria-label="Search events"><select id="cat" aria-label="Filter by category"><option value="">All categories</option></select></div><div id="list" class="grid"></div></main>`;
+  $('#cat').innerHTML += (await api('/api/categories')).map(c => `<option>${esc(c)}</option>`).join('');
+  const load = async () => {
+    const l = await api(`/api/events?q=${encodeURIComponent($('#q').value)}&category=${encodeURIComponent($('#cat').value)}`);
+    $('#list').innerHTML = l.map(ticket).join('') || '<p class="empty">No events match. Try another name or category.</p>';
+  };
+  let t; $('#q').oninput = () => { clearTimeout(t); t = setTimeout(load, 200); }; $('#cat').onchange = load; load();
+}
+
+document.addEventListener('click', async e => {
+  const id = e.target.dataset.reg; if (!id) return;
+  const ev = await api('/api/events/' + id);
+  dlg.innerHTML = `<h2>Register for ${esc(ev.name)}</h2><form id="rf"><label>Name</label><input name="name" required autocomplete="name"><label>Email</label><input name="email" type="email" required autocomplete="email"><label>College / Year</label><input name="college" placeholder="ABES EC, 2nd year" required><label>Phone number</label><input name="phone" type="tel" required autocomplete="tel"><p class="msg" id="m"></p><div class="row"><button class="btn">Submit registration</button><button type="button" class="btn alt" onclick="dlg.close()">Close</button></div></form>`;
+  dlg.showModal();
+  $('#rf').onsubmit = async x => {
+    x.preventDefault(); const m = $('#m');
+    try { await api(`/api/events/${id}/register`, { method: 'POST', body: Object.fromEntries(new FormData(x.target)) }); m.className = 'msg ok'; m.textContent = "You're registered for " + ev.name + '.'; x.target.reset(); }
+    catch (err) { m.className = 'msg'; m.textContent = err.message; }
+  };
+});
+
+/* ---------------- Admin ---------------- */
+const tab = n => [1, 2].forEach(i => $('#t' + i).classList.toggle('alt', i !== n));
+const logout = () => { token = null; sessionStorage.removeItem('tok'); admin(); };
+
+async function admin() {
+  if (!token) {
+    app.innerHTML = `<main><h2>Admin login</h2><form id="lf" style="max-width:340px"><label>Password</label><input type="password" name="password" required><p class="msg" id="m"></p><div class="row"><button class="btn">Log in</button></div></form></main>`;
+    $('#lf').onsubmit = async e => {
+      e.preventDefault();
+      try { token = (await api('/api/admin/login', { method: 'POST', body: { password: e.target.password.value } })).token; sessionStorage.setItem('tok', token); admin(); }
+      catch (x) { $('#m').textContent = x.message; }
+    };
+    return;
+  }
+  app.innerHTML = `<main><div class="tabs"><button class="btn" id="t1">Events</button><button class="btn" id="t2">Registrations</button><button class="btn alt" onclick="logout()" style="margin-left:auto">Log out</button></div><div id="pane"></div></main>`;
+  $('#t1').onclick = adminEvents; $('#t2').onclick = adminRegs; adminEvents();
+}
+
+async function adminEvents() {
+  tab(1); const l = await api('/api/events');
+  $('#pane').innerHTML = `<button class="btn" onclick="evForm()">Add event</button><div class="scroll" style="margin-top:1rem"><table><tr><th>Name</th><th>Category</th><th>Date &amp; time</th><th>Venue</th><th></th></tr>${l.map(e => `<tr><td>${esc(e.name)}${e.featured ? ' ⭐' : ''}</td><td>${esc(e.category)}</td><td>${fmt(e.date)}</td><td>${esc(e.venue)}</td><td style="white-space:nowrap"><button class="btn sm alt" onclick="evForm(${e.id})">Edit</button> <button class="btn sm del" onclick="delEv(${e.id})">Delete</button></td></tr>`).join('') || '<tr><td colspan="5" class="empty">No events yet. Add your first one.</td></tr>'}</table></div>`;
+}
+
+async function evForm(id) {
+  const e = id ? await api('/api/events/' + id) : { name: '', category: '', date: '', venue: '', description: '', featured: false };
+  dlg.innerHTML = `<h2>${id ? 'Edit' : 'Add'} event</h2><form id="ef"><label>Name</label><input name="name" required value="${esc(e.name)}"><label>Category</label><input name="category" required list="cl" value="${esc(e.category)}"><datalist id="cl"><option>Cultural<option>Sports<option>Entertainment<option>Technical</datalist><label>Date &amp; time</label><input name="date" type="datetime-local" required value="${esc(e.date)}"><label>Venue</label><input name="venue" required value="${esc(e.venue)}"><label>Description</label><textarea name="description" rows="3">${esc(e.description)}</textarea><label><input type="checkbox" name="featured" style="width:auto" ${e.featured ? 'checked' : ''}> Show as featured event</label><p class="msg" id="m"></p><div class="row"><button class="btn">Save event</button><button type="button" class="btn alt" onclick="dlg.close()">Cancel</button></div></form>`;
+  dlg.showModal();
+  $('#ef').onsubmit = async x => {
+    x.preventDefault(); const f = x.target, body = { ...Object.fromEntries(new FormData(f)), featured: f.featured.checked };
+    try { await api(id ? '/api/admin/events/' + id : '/api/admin/events', { method: id ? 'PUT' : 'POST', body }); dlg.close(); adminEvents(); }
+    catch (err) { $('#m').textContent = err.message; }
+  };
+}
+
+async function delEv(id) {
+  if (confirm('Delete this event and all its registrations?')) { await api('/api/admin/events/' + id, { method: 'DELETE' }); adminEvents(); }
+}
+
+async function adminRegs() {
+  tab(2); const evs = await api('/api/events');
+  $('#pane').innerHTML = `<div class="bar"><input id="rq" type="search" placeholder="Search name, email, college or phone" aria-label="Search registrations"><select id="re" aria-label="Filter by event"><option value="">All events</option>${evs.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('')}</select></div><div class="scroll"><table id="rt"></table></div>`;
+  const load = async () => {
+    const l = await api(`/api/admin/registrations?q=${encodeURIComponent($('#rq').value)}&eventId=${$('#re').value}`);
+    $('#rt').innerHTML = '<tr><th>Name</th><th>Email</th><th>College / Year</th><th>Phone</th><th>Event</th><th>Registered</th><th></th></tr>' +
+      (l.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td>${esc(r.college)}</td><td>${esc(r.phone)}</td><td>${esc(r.eventName)}</td><td>${fmt(r.createdAt)}</td><td><button class="btn sm del" aria-label="Delete registration" onclick="delReg(${r.id})">Remove</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">No registrations found.</td></tr>');
+  };
+  window.reloadRegs = load; let t; $('#rq').oninput = () => { clearTimeout(t); t = setTimeout(load, 200); }; $('#re').onchange = load; load();
+}
+async function delReg(id) { if (confirm('Remove this registration?')) { await api('/api/admin/registrations/' + id, { method: 'DELETE' }); reloadRegs(); } }
+
+route();
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "abes-events",
+  "version": "1.0.0",
+  "description": "College club event management: student site and admin dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "mongodb": "^6.9.0"
+  }
+}
